@@ -49,7 +49,7 @@ if st.button("🚀 Generar"):
         else:
             try:
                 genai.configure(api_key=current_key)
-                model_text = genai.GenerativeModel('gemini-1.5-flash')
+                model_text = genai.GenerativeModel('gemini-pro')
                 prompt_sistema = f"Crea 3 escenas (9:16) para: '{idea_input}'. Estilo: {estilo}. Dame: Subtítulo y Prompt de Imagen en Inglés detallado para cada escena."
                 
                 with st.spinner("Procesando..."):
@@ -57,7 +57,6 @@ if st.button("🚀 Generar"):
                     st.write(res_texto.text)
                     
                     st.subheader("🖼️ Imágenes")
-                    # Intento de extracción simple
                     lines = res_texto.text.split("\n")
                     prompts = [l.replace("- Prompt Imagen (Inglés):", "").strip() for l in lines if "Prompt Imagen" in l]
                     
@@ -71,4 +70,4 @@ if st.button("🚀 Generar"):
                             st.image(image, use_column_width=True)
             except Exception as e:
                 st.error(f"Error: {str(e)}")
-            
+                
