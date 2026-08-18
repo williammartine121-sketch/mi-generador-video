@@ -1,10 +1,12 @@
 import os
 import streamlit as st
+import google.generativeai as genai
+from PIL import Image
+import io
 
-st.set_page_config(page_title="Generador de Video IA", layout="wide")
-st.title("🎬 Automatizador de Videos desde Link")
+st.set_page_config(page_title="Generador de Video e Imágenes IA", layout="wide")
+st.title("🎬 Generador de Contenido Vertical (Prompts e Imágenes 9:16)")
 
-# Cargar las 15 claves API configuradas en las variables del servidor
 @st.cache_resource
 def cargar_cuentas():
     keys = []
@@ -27,38 +29,46 @@ def obtener_siguiente_key():
     return key_actual
 
 if api_keys:
-    st.sidebar.success(f"Cuentas activas en el pool: {len(api_keys)}/15")
+    st.sidebar.success(f"Pool Activo: {len(api_keys)}/15 Cuentas")
 else:
-    st.sidebar.warning("No se detectaron claves API en las variables del entorno.")
+    st.sidebar.error("⚠️ Agrega variables FLOW_KEY_1...15 en Render.")
 
-url_referencia = st.text_input("Pega aquí el link del video de referencia (TikTok, Shorts, Reels):")
+idea_input = st.text_area("Escribe la idea, tema o concepto:", height=100)
+estilo = st.selectbox(
+    "Estilo Visual:",
+    ["3D Pixar / Animación (Vertical 9:16)", "Macro ASMR / Realista (Vertical 9:16)", "Cinematográfico (Vertical 9:16)"]
+)
 
-opciones_voz = [
-    "Español Latino - Narrador Épico",
-    "Español Latino - Voz Juvenil",
-    "Español Latino - Voz Neutra Informativa"
-]
-voz_seleccionada = st.selectbox("Selecciona la voz para la locución:", opciones_voz)
-
-if st.button("Analizar Video y Generar Prompts"):
-    if not url_referencia:
-        st.error("Por favor ingresa un enlace válido.")
+if st.button("🚀 Generar"):
+    if not idea_input:
+        st.error("Ingresa una idea.")
     else:
-        key_uso = obtener_siguiente_key()
-        st.info("Procesando solicitud usando el slot de cuenta activa...")
-        
-        st.subheader("Desglose de Escenas Generado")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown("**Escena 1 (0-5s)**")
-            st.text_area("Prompt Imagen/Video:", "Estilo 3D Pixar, personaje principal mirando a la cámara, iluminación cinematográfica, 9:16 vertical.", key="p1")
-            st.text_input("Guion de voz:", "Aprende el secreto para crear contenido sin gastar dinero.", key="g1")
+        current_key = obtener_siguiente_key()
+        if not current_key:
+            st.error("No hay claves API.")
+        else:
+            try:
+                genai.configure(api_key=current_key)
+                model_text = genai.GenerativeModel('gemini-1.5-flash')
+                prompt_sistema = f"Crea 3 escenas (9:16) para: '{idea_input}'. Estilo: {estilo}. Dame: Subtítulo y Prompt de Imagen en Inglés detallado para cada escena."
+                
+                with st.spinner("Procesando..."):
+                    res_texto = model_text.generate_content(prompt_sistema)
+                    st.write(res_texto.text)
+                    
+                    st.subheader("🖼️ Imágenes")
+                    # Intento de extracción simple
+                    lines = res_texto.text.split("\n")
+                    prompts = [l.replace("- Prompt Imagen (Inglés):", "").strip() for l in lines if "Prompt Imagen" in l]
+                    
+                    if not prompts: prompts = [f"Vertical 9:16 shot of {idea_input}, highly detailed"]
+                    
+                    imagen_model = genai.GenerativeModel('imagen-3.0-generate-002')
+                    for p in prompts[:3]:
+                        result = imagen_model.generate_images(prompt=p, number_of_images=1, aspect_ratio="9:16")
+                        for gen_img in result.generated_images:
+                            image = Image.open(io.BytesIO(gen_img.image.image_bytes))
+                            st.image(image, use_column_width=True)
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
             
-        with col2:
-            st.markdown("**Escena 2 (5-10s)**")
-            st.text_area("Prompt Imagen/Video:", "Estilo 3D Pixar, personaje trabajando en computadora futurista, 9:16 vertical.", key="p2")
-            st.text_input("Guion de voz:", "Todo automatizado directamente desde la nube.", key="g2")
-
-        st.success("Análisis completado.")
-          
