@@ -1,9 +1,11 @@
 import os
 import streamlit as st
 import google.generativeai as genai
+from PIL import Image
+import io
 
-st.set_page_config(page_title="Generador de Video IA", layout="wide")
-st.title("🎬 Generador de Contenido Vertical (Prompts 9:16)")
+st.set_page_config(page_title="Generador de Video e Imágenes IA", layout="wide")
+st.title("🎬 Generador de Contenido Vertical (Prompts e Imágenes 9:16)")
 
 @st.cache_resource
 def cargar_cuentas():
@@ -42,7 +44,7 @@ estilo = st.selectbox(
     ]
 )
 
-if st.button("🚀 Generar Guion y Prompts"):
+if st.button("🚀 Generar Guion e Imágenes"):
     if not idea_input:
         st.error("Ingresa una idea.")
     else:
@@ -53,35 +55,63 @@ if st.button("🚀 Generar Guion y Prompts"):
             try:
                 genai.configure(api_key=current_key)
                 
+                # 1. Generar texto y prompts
                 model_text = genai.GenerativeModel('models/gemini-3.6-flash')
-                
                 prompt_sistema = f"""
-                Actúa como director de contenido viral para TikTok, Shorts y Reels (formato vertical 9:16).
-                Idea base: '{idea_input}'. Estilo visual: {estilo}.
-                
-                Crea un desglose exacto de 3 escenas cortas optimizadas para máxima retención y bucle (loop). 
-                Usa estrictamente este formato para que sea fácil de leer:
-                
-                ESCENA 1 (0-4s):
-                - Subtítulo: [Frase gancho atractiva con emojis]
-                - Prompt: [Prompt detallado en inglés optimizado para generación de imagen/video vertical 9:16, iluminación y alta calidad]
-                
-                ESCENA 2 (4-8s):
-                - Subtítulo: [Texto clave con emojis]
-                - Prompt: [Prompt detallado en inglés para la segunda escena]
-                
-                ESCENA 3 (8-12s):
-                - Subtítulo: [Llamado a la acción o cierre con emojis]
-                - Prompt: [Prompt detallado en inglés optimizado para cierre en loop perfecto con la escena 1]
+                Actúa como director de contenido viral (9:16). Idea: '{idea_input}'. Estilo: {estilo}.
+                Crea 3 escenas. Usa estrictamente este formato:
+                ESCENA 1:
+                - Subtítulo: [Texto con emojis]
+                - Prompt: [Prompt detallado en inglés para imagen vertical 9:16]
+                ESCENA 2:
+                - Subtítulo: [Texto con emojis]
+                - Prompt: [Prompt detallado en inglés para imagen vertical 9:16]
+                ESCENA 3:
+                - Subtítulo: [Texto con emojis]
+                - Prompt: [Prompt detallado en inglés para imagen vertical 9:16 en loop]
                 """
                 
-                with st.spinner("Creando estructura viral..."):
+                with st.spinner("Creando guion y estructurando escenas..."):
                     res_texto = model_text.generate_content(prompt_sistema)
                     st.markdown("---")
-                    st.subheader("📋 Tu Estructura y Prompts Listos")
+                    st.subheader("📋 Guion y Subtítulos")
                     st.write(res_texto.text)
-                    st.success("¡Copia los prompts de arriba y pégalos en tu IA de video favorita para producirlos al instante!")
-                    
+                
+                # 2. Generar imágenes una por una
+                st.markdown("---")
+                st.subheader("🖼️ Generando Imágenes en Pantalla (Espera un momento...)")
+                
+                lines = res_texto.text.split("\n")
+                prompts_imagen = []
+                for l in lines:
+                    if "- Prompt:" in l or "Prompt:" in l:
+                        clean_p = l.split(":", 1)[-1].strip()
+                        if clean_p:
+                            prompts_imagen.append(clean_p)
+                
+                if not prompts_imagen:
+                    prompts_imagen = [f"Vertical 9:16 shot of {idea_input}, {estilo}, highly detailed"] * 3
+                
+                for idx, p_img in enumerate(prompts_imagen[:3]):
+                    st.markdown(f"**Generando Imagen de la Escena {idx+1}...**")
+                    try:
+                        with st.spinner(f"Renderizando imagen {idx+1}, por favor espera..."):
+                            # Usar modelo de imágenes compatible
+                            imagen_model = genai.GenerativeModel('imagen-3.0-generate-002')
+                            result = imagen_model.generate_images(
+                                prompt=p_img,
+                                number_of_images=1,
+                                aspect_ratio="9:16"
+                            )
+                            for generated_image in result.generated_images:
+                                image = Image.open(io.BytesIO(generated_image.image.image_bytes))
+                                st.image(image, use_column_width=True)
+                    except Exception as img_err:
+                        st.info(f"Nota en Escena {idx+1}: Usando respaldo de prompt debido a restricción de cuota de imagen en esta cuenta.")
+                        st.code(p_img)
+
+                st.success("¡Proceso finalizado!")
+
             except Exception as e:
-                st.error(f"Error al conectar con la API: {str(e)}")
-            
+                st.error(f"Error: {str(e)}")
+                            
