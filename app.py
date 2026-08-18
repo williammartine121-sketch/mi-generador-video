@@ -104,7 +104,7 @@ if st.button("🚀 Generar Imágenes y Guion Total"):
                                 st.caption(f"**Escena {idx+1}**")
                                 # Usar Pollinations AI (API gratuita sin key)
                                 url_imagen = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(p_img)}?width=576&height=1024&nologo=true"
-                                st.image(url_imagen, use_column_width=True)
+                                st.image(url_imagen, use_container_width=True)
                     else:
                         st.warning("No se pudieron extraer los prompts de imagen. Intenta generar de nuevo.")
                         
