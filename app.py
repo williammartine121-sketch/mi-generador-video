@@ -34,7 +34,12 @@ else:
 idea_input = st.text_area("Escribe la idea, tema o concepto:", height=100)
 estilo = st.selectbox(
     "Estilo Visual:",
-    ["3D Pixar / Animación (Vertical 9:16)", "Macro ASMR / Realista (Vertical 9:16)", "Cinematográfico (Vertical 9:16)"]
+    [
+        "3D Pixar / Personaje Animado (Vertical 9:16)", 
+        "Macro ASMR / Escultura Hiperrealista (Vertical 9:16)", 
+        "DIY / Arte con Material Reciclado (Vertical 9:16)",
+        "Cinematográfico (Vertical 9:16)"
+    ]
 )
 
 if st.button("🚀 Generar"):
@@ -48,11 +53,8 @@ if st.button("🚀 Generar"):
             try:
                 genai.configure(api_key=current_key)
                 
-                # Intentar cargar un modelo disponible directamente desde la lista de la API
-                modelos = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                modelo_seleccionado = modelos[0] if modelos else 'gemini-1.5-flash-latest'
-                
-                model_text = genai.GenerativeModel(modelo_seleccionado)
+                # ¡AQUÍ ESTÁ LA SOLUCIÓN! El modelo exacto que pide el error:
+                model_text = genai.GenerativeModel('models/gemini-3.6-flash')
                 
                 prompt_sistema = f"""
                 Actúa como director de contenido viral (9:16).
