@@ -43,13 +43,16 @@ if st.button("🚀 Generar"):
     else:
         current_key = obtener_siguiente_key()
         if not current_key:
-            st.error("No hay claves API.")
+            st.error("No hay claves API configuradas.")
         else:
             try:
                 genai.configure(api_key=current_key)
                 
-                # Modelo con nombre exacto compatible
-                model_text = genai.GenerativeModel('models/gemini-1.5-pro')
+                # Intentar cargar un modelo disponible directamente desde la lista de la API
+                modelos = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                modelo_seleccionado = modelos[0] if modelos else 'gemini-1.5-flash-latest'
+                
+                model_text = genai.GenerativeModel(modelo_seleccionado)
                 
                 prompt_sistema = f"""
                 Actúa como director de contenido viral (9:16).
@@ -76,4 +79,5 @@ if st.button("🚀 Generar"):
                     st.success("¡Prompts e instrucciones listos para usar!")
                     
             except Exception as e:
-                st.error(f"Error: {str(e)}")
+                st.error(f"Error al conectar con la API: {str(e)}")
+                
