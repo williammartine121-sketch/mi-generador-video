@@ -1,11 +1,10 @@
 import os
+import urllib.parse
 import streamlit as st
 import google.generativeai as genai
-from PIL import Image
-import io
 
-st.set_page_config(page_title="Generador de Video e Imágenes IA", layout="wide")
-st.title("🎬 Generador de Contenido Vertical (Prompts e Imágenes 9:16)")
+st.set_page_config(page_title="Generador Total IA", layout="wide")
+st.title("🎬 Creador de Contenido Vertical (Imágenes y Prompts)")
 
 @st.cache_resource
 def cargar_cuentas():
@@ -33,18 +32,18 @@ if api_keys:
 else:
     st.sidebar.error("⚠️ Agrega variables FLOW_KEY_1...15 en Render.")
 
-idea_input = st.text_area("Escribe la idea, tema o concepto:", height=100)
+idea_input = st.text_area("Escribe la idea para tu video:", height=80)
 estilo = st.selectbox(
     "Estilo Visual:",
     [
-        "3D Pixar / Personaje Animado (Vertical 9:16)", 
-        "Macro ASMR / Escultura Hiperrealista (Vertical 9:16)", 
-        "DIY / Arte con Material Reciclado (Vertical 9:16)",
-        "Cinematográfico (Vertical 9:16)"
+        "3D Pixar / Personaje Animado", 
+        "Macro ASMR / Hiperrealista", 
+        "DIY / Reciclaje",
+        "Cinematográfico Oscuro"
     ]
 )
 
-if st.button("🚀 Generar Guion e Imágenes"):
+if st.button("🚀 Generar Imágenes y Guion Total"):
     if not idea_input:
         st.error("Ingresa una idea.")
     else:
@@ -54,64 +53,62 @@ if st.button("🚀 Generar Guion e Imágenes"):
         else:
             try:
                 genai.configure(api_key=current_key)
-                
-                # 1. Generar texto y prompts
                 model_text = genai.GenerativeModel('models/gemini-3.6-flash')
+                
                 prompt_sistema = f"""
-                Actúa como director de contenido viral (9:16). Idea: '{idea_input}'. Estilo: {estilo}.
-                Crea 3 escenas. Usa estrictamente este formato:
+                Eres un director de videos virales (9:16). Idea: '{idea_input}'. Estilo: {estilo}.
+                Crea 3 escenas. Debes seguir ESTRICTAMENTE este formato para que el sistema funcione:
+
                 ESCENA 1:
-                - Subtítulo: [Texto con emojis]
-                - Prompt: [Prompt detallado en inglés para imagen vertical 9:16]
+                VOZ EN OFF ESPAÑOL: [Lo que la IA de voz dirá]
+                PROMPT_IMAGEN_INGLES: [Prompt detallado en inglés para generar la imagen estática vertical, sin comillas]
+                PROMPT_VIDEO_INGLES: [Prompt en inglés para animar la imagen en Luma o Gen-3]
+
                 ESCENA 2:
-                - Subtítulo: [Texto con emojis]
-                - Prompt: [Prompt detallado en inglés para imagen vertical 9:16]
+                VOZ EN OFF ESPAÑOL: [Lo que la IA de voz dirá]
+                PROMPT_IMAGEN_INGLES: [Prompt detallado en inglés]
+                PROMPT_VIDEO_INGLES: [Prompt en inglés para animar la imagen]
+
                 ESCENA 3:
-                - Subtítulo: [Texto con emojis]
-                - Prompt: [Prompt detallado en inglés para imagen vertical 9:16 en loop]
+                VOZ EN OFF ESPAÑOL: [Llamado a la acción]
+                PROMPT_IMAGEN_INGLES: [Prompt detallado en inglés]
+                PROMPT_VIDEO_INGLES: [Prompt en inglés para animar en loop]
                 """
                 
-                with st.spinner("Creando guion y estructurando escenas..."):
+                with st.spinner("🧠 Pensando guion y dibujando imágenes..."):
                     res_texto = model_text.generate_content(prompt_sistema)
+                    texto_generado = res_texto.text
+                    
                     st.markdown("---")
-                    st.subheader("📋 Guion y Subtítulos")
-                    st.write(res_texto.text)
-                
-                # 2. Generar imágenes una por una
-                st.markdown("---")
-                st.subheader("🖼️ Generando Imágenes en Pantalla (Espera un momento...)")
-                
-                lines = res_texto.text.split("\n")
-                prompts_imagen = []
-                for l in lines:
-                    if "- Prompt:" in l or "Prompt:" in l:
-                        clean_p = l.split(":", 1)[-1].strip()
-                        if clean_p:
-                            prompts_imagen.append(clean_p)
-                
-                if not prompts_imagen:
-                    prompts_imagen = [f"Vertical 9:16 shot of {idea_input}, {estilo}, highly detailed"] * 3
-                
-                for idx, p_img in enumerate(prompts_imagen[:3]):
-                    st.markdown(f"**Generando Imagen de la Escena {idx+1}...**")
-                    try:
-                        with st.spinner(f"Renderizando imagen {idx+1}, por favor espera..."):
-                            # Usar modelo de imágenes compatible
-                            imagen_model = genai.GenerativeModel('imagen-3.0-generate-002')
-                            result = imagen_model.generate_images(
-                                prompt=p_img,
-                                number_of_images=1,
-                                aspect_ratio="9:16"
-                            )
-                            for generated_image in result.generated_images:
-                                image = Image.open(io.BytesIO(generated_image.image.image_bytes))
-                                st.image(image, use_column_width=True)
-                    except Exception as img_err:
-                        st.info(f"Nota en Escena {idx+1}: Usando respaldo de prompt debido a restricción de cuota de imagen en esta cuenta.")
-                        st.code(p_img)
-
-                st.success("¡Proceso finalizado!")
+                    st.subheader("📋 Tu Guion de Trabajo")
+                    st.write(texto_generado)
+                    
+                    st.markdown("---")
+                    st.subheader("🖼️ Tus Imágenes Base Generadas (Listas para animar)")
+                    
+                    # Extraer los prompts de imagen para renderizarlos
+                    lineas = texto_generado.split('\n')
+                    prompts_imagenes = []
+                    for linea in lineas:
+                        if "PROMPT_IMAGEN_INGLES:" in linea:
+                            # Limpiar el texto
+                            prompt_limpio = linea.replace("PROMPT_IMAGEN_INGLES:", "").strip()
+                            # Añadir palabras clave para asegurar formato vertical y calidad
+                            prompt_completo = f"{prompt_limpio}, vertical 9:16 format, highly detailed, masterpiece"
+                            prompts_imagenes.append(prompt_completo)
+                    
+                    if prompts_imagenes:
+                        cols = st.columns(len(prompts_imagenes[:3]))
+                        for idx, p_img in enumerate(prompts_imagenes[:3]):
+                            with cols[idx]:
+                                st.caption(f"**Escena {idx+1}**")
+                                # Usar Pollinations AI (API gratuita sin key)
+                                url_imagen = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(p_img)}?width=576&height=1024&nologo=true"
+                                st.image(url_imagen, use_column_width=True)
+                    else:
+                        st.warning("No se pudieron extraer los prompts de imagen. Intenta generar de nuevo.")
+                        
+                st.success("✅ ¡Listo! Guarda estas imágenes. Luego llévalas a tu IA de video junto con el 'PROMPT_VIDEO_INGLES'. Al final, ponle la 'VOZ EN OFF ESPAÑOL' en CapCut.")
 
             except Exception as e:
                 st.error(f"Error: {str(e)}")
-                            
