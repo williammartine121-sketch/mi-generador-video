@@ -4,8 +4,8 @@ import streamlit as st
 import google.generativeai as genai
 
 st.set_page_config(page_title="Clonador Viral IA", layout="wide")
-st.title("🔗 Generador de Prompts desde un Enlace (URL)")
-st.markdown("Pega un enlace de referencia (un artículo, noticia, o blog) y la IA extraerá el tema para crear tu guion de 3 escenas y prompts.")
+st.title("🔗 Generador de Prompts desde un Enlace")
+st.markdown("Pega un enlace de referencia (Shorts, TikTok, noticia o blog) para crear tu guion de 3 escenas y prompts.")
 
 @st.cache_resource
 def cargar_cuentas():
@@ -33,10 +33,8 @@ if api_keys:
 else:
     st.sidebar.error("⚠️ Agrega variables FLOW_KEY_1...15 en Render.")
 
-# Nuevo campo para el enlace
-url_input = st.text_input("🔗 Pega aquí el enlace de referencia:", placeholder="https://ejemplo.com/noticia-viral")
+url_input = st.text_input("🔗 Pega aquí el enlace de referencia:", placeholder="https://youtube.com/shorts/...")
 
-# Estilos enfocados en tus temáticas
 estilo = st.selectbox(
     "🎨 Elige tu Estilo Visual para los Prompts:",
     [
@@ -48,7 +46,6 @@ estilo = st.selectbox(
 )
 
 def extraer_texto_de_url(url):
-    # Usamos un servicio gratuito (Jina) que convierte cualquier URL en texto limpio para la IA
     try:
         respuesta = requests.get(f"https://r.jina.ai/{url}")
         if respuesta.status_code == 200:
@@ -66,22 +63,23 @@ if st.button("🚀 Leer Enlace y Generar Prompts"):
         if not current_key:
             st.error("No hay claves API configuradas.")
         else:
-            with st.spinner("🔍 Leyendo el enlace y analizando el contenido..."):
+            with st.spinner("🔍 Leyendo la información del enlace..."):
                 texto_referencia = extraer_texto_de_url(url_input)
                 
             if not texto_referencia:
-                st.error("No se pudo leer el contenido de ese enlace. Intenta con otro o revisa que sea público.")
+                st.error("No se pudo extraer texto. Intenta con un enlace público diferente.")
             else:
                 try:
                     genai.configure(api_key=current_key)
-                    model_text = genai.GenerativeModel('models/gemini-1.5-flash')
+                    # CORRECCIÓN AQUÍ: Usamos el nombre del modelo más compatible
+                    model_text = genai.GenerativeModel('gemini-1.5-flash')
                     
                     prompt_sistema = f"""
                     Eres un director experto en retención para videos verticales 9:16 (TikTok/Shorts/Reels).
-                    Acabo de leer este contenido de referencia:
+                    Acabo de leer este contenido extraído de un enlace (puede ser el título, descripción o subtítulos de un video):
                     {texto_referencia[:3000]}...
                     
-                    Tu tarea es adaptar la idea principal de ese texto a un guion de 3 escenas.
+                    Tu tarea es adaptar la idea principal de ese texto a un guion de 3 escenas cortas.
                     El estilo visual para las imágenes debe ser: {estilo}.
                     
                     Usa ESTRICTAMENTE este formato:
@@ -102,14 +100,26 @@ if st.button("🚀 Leer Enlace y Generar Prompts"):
                     - Prompt Video Inglés: [Prompt de animación para un loop perfecto]
                     """
                     
-                    with st.spinner("✍️ Creando guion y prompts profesionales..."):
+                    with st.spinner("✍️ Creando guion y prompts basados en el enlace..."):
                         res_texto = model_text.generate_content(prompt_sistema)
                         
                         st.markdown("---")
                         st.subheader("📋 Resultados Listos")
                         st.write(res_texto.text)
                         
-                        st.success("¡Listo! Copia los 'Prompt Imagen Inglés' en tu generador de imágenes favorito (Bing, Leonardo) y usa los 'Prompt Video' para darles movimiento en Luma o Gen-3.")
+                        st.success("¡Listo! Copia los prompts en tu generador de imágenes y video favorito.")
                         
                 except Exception as e:
-                    st.error(f"Error al generar con la IA: {str(e)}")
+                    # Respaldo por si la librería es muy antigua y pide el modelo anterior
+                    if "404" in str(e) or "not found" in str(e):
+                        try:
+                            model_text_fallback = genai.GenerativeModel('gemini-1.0-pro')
+                            res_texto = model_text_fallback.generate_content(prompt_sistema)
+                            st.markdown("---")
+                            st.subheader("📋 Resultados Listos (Versión Pro)")
+                            st.write(res_texto.text)
+                        except Exception as e2:
+                            st.error(f"Error definitivo de modelo: {str(e2)}")
+                    else:
+                        st.error(f"Error al generar con la IA: {str(e)}")
+                        
